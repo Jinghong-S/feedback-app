@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>总部数据看板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="max-w-6xl mx-auto mt-6">
+        <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow">
+            <h2 class="text-2xl font-bold text-gray-800">门店运营数据分析中枢</h2>
+            <a href="https://i-build.awusw2.shld.apple.com/runtime/51803/" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition" target="_blank">&larr; 返回前台模拟提交</a>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h3 class="text-lg font-bold mb-4 text-gray-700 border-b pb-2">各门店反馈活跃度</h3>
+                <div id="chart" style="width: 100%; height: 350px;"></div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex justify-between items-center border-b pb-2 mb-4">
+                    <h3 class="text-lg font-bold text-gray-700">实时滚动反馈库 (最新10条)</h3>
+                    <span class="text-xs text-green-500 flex items-center">
+                        <span class="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></span>
+                        实时连接中
+                    </span>
+                </div>
+                <div class="overflow-y-auto h-[350px] pr-2">
+                    <ul id="recentList" class="space-y-4">
+                        <li class="text-gray-400 text-center py-10">加载数据中...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let myChart = null;
+
+        function loadData() {
+            fetch('https://i-build.awusw2.shld.apple.com/runtime/51803/api/report')
+            .then(response => response.json())
+            .then(data => {
+                if (!myChart) {
+                    myChart = echarts.init(document.getElementById('chart'));
+                }
+                const option = {
+                    tooltip: { trigger: 'axis' },
+                    xAxis: {
+                        type: 'category',
+                        data: data.counts.map(item => item.store_name),
+                        axisLabel: { interval: 0, rotate: 15 }
+                    },
+                    yAxis: { type: 'value', name: '提交条数', minInterval: 1 },
+                    series: [{
+                        name: '反馈数量',
+                        type: 'bar',
+                        data: data.counts.map(item => item.count),
+                        itemStyle: { color: '#3B82F6', borderRadius: [4, 4, 0, 0] },
+                        barWidth: '40%'
+                    }]
+                };
+                myChart.setOption(option);
+
+                const listUl = document.getElementById('recentList');
+                if(data.recent.length === 0) {
+                    listUl.innerHTML = '<li class="text-gray-400 text-center py-10">目前还没有任何门店提交反馈</li>';
+                } else {
+                    listUl.innerHTML = '';
+                    data.recent.forEach(item => {
+                        listUl.innerHTML += `
+                            <li class="bg-blue-50 rounded-lg p-3 border-l-4 border-blue-500">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="font-bold text-sm text-gray-800">${item.store_name}</span>
+                                    <span class="text-xs text-gray-500">${item.time}</span>
+                                </div>
+                                <p class="text-sm text-gray-700">${item.content}</p>
+                            </li>
+                        `;
+                    });
+                }
+            });
+        }
+
+        loadData();
+        setInterval(loadData, 3000); // 3秒刷新一次
+        window.addEventListener('resize', () => { if(myChart) myChart.resize(); });
+    </script>
+</body>
+</html>

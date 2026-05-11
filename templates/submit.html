@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>门店反馈提交系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4">
+    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6 mt-10">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800">门店每日反馈</h2>
+        
+        <form id="feedbackForm">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">选择您所在的门店</label>
+                <select id="storeName" class="shadow border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="北京三里屯店">北京三里屯店</option>
+                    <option value="上海南京东路店">上海南京东路店</option>
+                    <option value="广州天河城店">广州天河城店</option>
+                    <option value="深圳万象城店">深圳万象城店</option>
+                </select>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">反馈内容 (客流/设备/需求等)</label>
+                <textarea id="content" rows="4" class="shadow border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入详情..."></textarea>
+            </div>
+            
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full transition duration-150">
+                提交报告
+            </button>
+        </form>
+        
+        <div id="message" class="mt-4 text-center hidden font-bold"></div>
+        
+        <div class="mt-8 pt-4 border-t border-gray-200 text-center">
+            <a href="https://i-build.awusw2.shld.apple.com/runtime/51803/dashboard" class="text-blue-500 hover:text-blue-800 text-sm font-medium" target="_blank">进入总部管理看板 &rarr;</a>
+        </div>
+    </div>
+
+    <!-- 这是JavaScript，负责把数据“寄给”后端API -->
+    <script>
+        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
+            e.preventDefault(); // 阻止网页刷新
+            
+            const storeName = document.getElementById('storeName').value;
+            const content = document.getElementById('content').value;
+            const btn = this.querySelector('button');
+            btn.innerText = '提交中...';
+            
+            // fetch 就是用来发包裹的快递员
+            fetch('https://i-build.awusw2.shld.apple.com/runtime/51803/api/feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ store_name: storeName, content: content })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const msgDiv = document.getElementById('message');
+                msgDiv.classList.remove('hidden');
+                btn.innerText = '提交报告';
+                
+                if(data.status === 'success') {
+                    msgDiv.innerHTML = '<span class="text-green-600">提交成功！辛苦了。</span>';
+                    document.getElementById('content').value = ''; // 清空输入框
+                } else {
+                    msgDiv.innerHTML = '<span class="text-red-600">提交失败，请重试。</span>';
+                }
+                
+                // 3秒后隐藏提示
+                setTimeout(() => { msgDiv.classList.add('hidden'); }, 3000);
+            });
+        });
+    </script>
+</body>
+</html>
