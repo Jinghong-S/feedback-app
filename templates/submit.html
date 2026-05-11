@@ -21,7 +21,6 @@
             <h2 class="text-2xl font-bold mb-1">业务异动提报</h2>
             <div class="flex items-center text-sm opacity-90">
                 <span>当前提报周期：</span>
-                <!-- 这里的周期将由 JS 自动计算 -->
                 <span id="currentPeriod" class="ml-2 font-mono font-bold bg-white/20 px-2 py-0.5 rounded">计算中...</span>
             </div>
         </div>
@@ -29,22 +28,40 @@
         <form id="feedbackForm" class="p-6 space-y-6">
             <div class="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                 <h3 class="font-bold text-gray-800 border-b pb-2">1. 锁定您的门店</h3>
+                
                 <div>
                     <label class="block text-gray-600 text-sm font-medium mb-1">所属渠道</label>
                     <select id="channelSelect" class="w-full border-gray-300 rounded-md p-2 border focus:ring-blue-500">
                         <option value="">-- 请选择渠道 --</option>
                         <option value="Mass Merchant">Mass Merchant (MM)</option>
                         <option value="OTC">OTC</option>
-                        <option value="Township">Township</option>
+                        <option value="Township">Township (TS)</option>
                     </select>
                 </div>
+
                 <div>
-                    <label class="block text-gray-600 text-sm font-medium mb-1">门店名称 (支持拼音/汉字模糊搜索)</label>
+                    <label class="block text-gray-600 text-sm font-medium mb-1 flex justify-between">
+                        <span>门店名称 (支持模糊搜索)</span>
+                    </label>
                     <select id="storeSelect" class="w-full select2" disabled>
                         <option value="">-- 请先选择渠道 --</option>
                     </select>
                 </div>
+
+                <!-- 手动添加门店区域 (默认隐藏) -->
+                <div id="manualStoreDiv" class="hidden space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-100 mt-2">
+                    <p class="text-xs text-blue-600 font-bold mb-1">⚠️ 未找到您的门店？请手动添加：</p>
+                    <div>
+                        <label class="block text-gray-600 text-xs font-medium mb-1">门店全称</label>
+                        <input type="text" id="manualStoreName" class="w-full border-gray-300 rounded-md p-2 border text-sm" placeholder="例如：北京三里屯店">
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 text-xs font-medium mb-1">Apple ID</label>
+                        <input type="text" id="manualAppleId" class="w-full border-gray-300 rounded-md p-2 border text-sm" placeholder="例如：1000224">
+                    </div>
+                </div>
             </div>
+
             <div class="space-y-4">
                 <h3 class="font-bold text-gray-800 border-b pb-2">2. 当周核心异动</h3>
                 <div>
@@ -82,44 +99,35 @@
             <div id="message" class="text-center hidden font-bold mt-2"></div>
         </form>
     </div>
-     <script>
-        // --- 日期自动计算逻辑 ---
+    
+    <script>
+        // 动态计算财年周数
         function calculateFiscalWeek() {
-            // 设定基准点：2026年5月10日 (周日) 为 Q3 W7 的第一天
             const anchorDate = new Date('2026-05-10T00:00:00');
-            const anchorQ = 3;
-            const anchorW = 7;
-            
-            const today = new Date();
-            // 计算相差的天数
-            const diffTime = today - anchorDate;
-            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            
-            // 计算相差的周数
+            const anchorQ = 3, anchorW = 7;
+            const diffDays = Math.floor((new Date() - anchorDate) / (1000 * 60 * 60 * 24));
             const diffWeeks = Math.floor(diffDays / 7);
             
             let currentW = anchorW + diffWeeks;
-            let currentQ = anchorQ;
-            let currentFY = 26;
-            
-            // 简单处理跨季度逻辑 (假设每个季度13周)
-            while(currentW > 13) {
-                currentW -= 13;
-                currentQ += 1;
-                if(currentQ > 4) {
-                    currentQ = 1;
-                    currentFY += 1;
-                }
-            }
-            // 如果计算出是负数（测试用），就不做处理，直接使用锚点
-            if (diffDays < 0) { currentW = 6; } // 比如 5月9日
-            
+            let currentQ = anchorQ, currentFY = 26;
+            while(currentW > 13) { currentW -= 13; currentQ += 1; if(currentQ > 4) { currentQ = 1; currentFY += 1; } }
+            if (diffDays < 0) { currentW = 6; }
             return `FY${currentFY}Q${currentQ} - W${currentW}`;
         }
-        
         document.getElementById('currentPeriod').innerText = calculateFiscalWeek();
 
-        // --- 提交表单逻辑 ---
+        // 真实提取的门店库
+        const mockStores = {
+            "Mass Merchant": [
+                {"name": "宿迁京东重庆京东 Mall 杨家坪店", "id": "4180224"},
+                {"name": "宿迁京东长沙京东 MALL", "id": "4082286"},
+                {"name": "宿迁京东西安京东 MALL", "id": "3477993"},
+                {"name": "宿迁京东西安电视塔城市旗舰店", "id": "4047986"}
+            ],
+            "OTC": [],
+            "Township": []
+        };
+
         const reasonsUp = [
             "履约能力提升，断货缓解等", "捆绑销售（Bundle）", "以旧换新，分期付款等增值服务", "店内互动坊",
             "大客户团购，企业购机", "门店新增买赠促销活动", "专区位置优势", "生命周期营销", "会员等级权益",
@@ -133,52 +141,87 @@
             "创新缺乏", "负面舆情或质量风波", "竞品旗舰突围", "竞品冲击与客流被抢", "渠道价格倒挂",
             "无法参加运营商或商场促销活动", "当地经济衰退原因，购买力下降", "国补政策缺失，顾客观望", "其它原因"
         ];
-        const mockStores = {
-            "Mass Merchant": ["宿迁京东重庆京东 Mall 杨家坪店", "宿迁京东长沙京东 MALL", "宿迁京东西安京东 MALL", "宿迁京东西安电视塔城市旗舰店"],
-            "OTC": ["上海移动南京东路厅", "广州电信天河城店", "北京联通三里屯店"],
-            "Township": ["苏宁易购乡镇授权店A", "五星电器乡镇店B"]
-        };
+
         $(document).ready(function() {
-            $('.select2').select2({ placeholder: "输入名字或拼音查找" });
+            $('.select2').select2({ placeholder: "输入名字或拼音查找门店" });
+
             $('#channelSelect').change(function() {
                 const ch = $(this).val();
                 const $store = $('#storeSelect');
                 $store.empty().append('<option value="">-- 请选择门店 --</option>');
-
-                if (ch && mockStores[ch]) {
-                    mockStores[ch].forEach(store => $store.append(new Option(store, store)));
+                
+                if (ch) {
+                    if (mockStores[ch] && mockStores[ch].length > 0) {
+                        mockStores[ch].forEach(store => {
+                            // value 保存为 "AppleID|店名" 的格式
+                            $store.append(new Option(`${store.name} (ID: ${store.id})`, `${store.id}|${store.name}`));
+                        });
+                    }
+                    // 追加一个“手动输入”的特殊选项
+                    $store.append(new Option("➕ 没找到我的门店？点此手动添加", "MANUAL_ENTRY"));
                     $store.prop('disabled', false);
                 } else {
                     $store.prop('disabled', true);
                 }
                 $store.trigger('change');
             });
+
+            // 监听门店选择，如果是“手动输入”，展示输入框
+            $('#storeSelect').change(function() {
+                if ($(this).val() === 'MANUAL_ENTRY') {
+                    $('#manualStoreDiv').removeClass('hidden');
+                } else {
+                    $('#manualStoreDiv').addClass('hidden');
+                }
+            });
+
             $('input[name="trend"]').change(function() {
                 const trend = $(this).val();
                 const $reason = $('#reasonSelect');
                 $reason.empty().append('<option value="">-- 请选择核心归因 --</option>');
-
                 const list = trend === 'Up' ? reasonsUp : reasonsDown;
                 list.forEach(r => $reason.append(new Option(r, r)));
-
                 $reason.prop('disabled', false).removeClass('bg-gray-100');
             });
+
             $('#feedbackForm').submit(function(e) {
                 e.preventDefault();
+                
+                // 解析最终确定的店名和 Apple ID
+                let finalStoreName = '';
+                let finalAppleId = '';
+                const selectedVal = $('#storeSelect').val();
+                
+                if (selectedVal === 'MANUAL_ENTRY') {
+                    finalStoreName = $('#manualStoreName').val().trim();
+                    finalAppleId = $('#manualAppleId').val().trim();
+                    if (!finalStoreName || !finalAppleId) {
+                        alert("请填写完整的门店全称和 Apple ID！");
+                        return;
+                    }
+                } else if (selectedVal) {
+                    const parts = selectedVal.split('|');
+                    finalAppleId = parts[0];
+                    finalStoreName = parts[1];
+                }
+
                 const data = {
                     period: $('#currentPeriod').text(),
                     channel: $('#channelSelect').val(),
-                    region: 'Auto-mapped',
-                    store_name: $('#storeSelect').val(),
+                    region: finalAppleId, // 我们利用原有数据库的 region 字段，巧妙地把 Apple ID 存进去
+                    store_name: finalStoreName,
                     trend: $('input[name="trend"]:checked').val(),
                     reason: $('#reasonSelect').val(),
                     detail: $('#detailInput').val()
                 };
+
                 if (!data.store_name || !data.trend || !data.reason) {
                     alert("请填写完整：门店、趋势、和核心归因！");
                     return;
                 }
-                $('#submitBtn').text('提交中...').prop('disabled', true);
+
+                $('#submitBtn').text('加密提交中...').prop('disabled', true);
+
                 fetch('/api/feedback', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -192,6 +235,8 @@
                     if(res.status === 'success') {
                         msgDiv.html('<span class="text-green-600">✅ 提报成功！已自动汇入大盘。</span>');
                         $('#detailInput').val('');
+                        $('#manualStoreName').val('');
+                        $('#manualAppleId').val('');
                     } else {
                         msgDiv.html('<span class="text-red-600">❌ 提报失败，请重试。</span>');
                     }
