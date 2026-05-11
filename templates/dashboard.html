@@ -11,7 +11,7 @@
     <div class="max-w-6xl mx-auto mt-6">
         <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow">
             <h2 class="text-2xl font-bold text-gray-800">门店运营数据分析中枢</h2>
-            <a href="https://i-build.awusw2.shld.apple.com/runtime/51803/" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition" target="_blank">&larr; 返回前台模拟提交</a>
+            <a href="/" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition" target="_blank">&larr; 返回前台模拟提交</a>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -41,7 +41,7 @@
         let myChart = null;
 
         function loadData() {
-            fetch('https://i-build.awusw2.shld.apple.com/runtime/51803/api/report')
+            fetch('/api/report')
             .then(response => response.json())
             .then(data => {
                 if (!myChart) {
