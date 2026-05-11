@@ -3,72 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>门店反馈提交系统</title>
+    <title>门店周度反馈 2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <style>
+        .select2-container .select2-selection--single { height: 42px; border-color: #d1d5db; border-radius: 0.375rem; }
+        .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 40px; color: #374151; }
+        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 40px; }
+        .radio-btn:checked + label { background-color: #eff6ff; border-color: #3b82f6; color: #1d4ed8; font-weight: bold;}
+    </style>
 </head>
-<body class="bg-gray-100 p-4">
-    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6 mt-10">
-        <h2 class="text-2xl font-bold mb-6 text-gray-800">门店每日反馈</h2>
-        
-        <form id="feedbackForm">
-            <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2">选择您所在的门店</label>
-                <select id="storeName" class="shadow border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="北京三里屯店">北京三里屯店</option>
-                    <option value="上海南京东路店">上海南京东路店</option>
-                    <option value="广州天河城店">广州天河城店</option>
-                    <option value="深圳万象城店">深圳万象城店</option>
-                </select>
+<body class="bg-gray-50 p-4">
+    <div class="max-w-lg mx-auto bg-white rounded-2xl shadow-lg overflow-hidden mt-6 mb-10">
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white">
+            <h2 class="text-2xl font-bold mb-1">业务异动提报</h2>
+            <div class="flex items-center text-sm opacity-90">
+                <span>当前提报周期：</span>
+                <!-- 这里的周期将由 JS 自动计算 -->
+                <span id="currentPeriod" class="ml-2 font-mono font-bold bg-white/20 px-2 py-0.5 rounded">计算中...</span>
             </div>
-            
-            <div class="mb-6">
-                <label class="block text-gray-700 text-sm font-bold mb-2">反馈内容 (客流/设备/需求等)</label>
-                <textarea id="content" rows="4" class="shadow border rounded w-full py-2 px-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="请输入详情..."></textarea>
-            </div>
-            
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full transition duration-150">
-                提交报告
-            </button>
-        </form>
-        
-        <div id="message" class="mt-4 text-center hidden font-bold"></div>
-        
-        <div class="mt-8 pt-4 border-t border-gray-200 text-center">
-            <a href="/dashboard" class="text-blue-500 hover:text-blue-800 text-sm font-medium" target="_blank">进入总部管理看板 &rarr;</a>
         </div>
-    </div>
 
-    <!-- 这是JavaScript，负责把数据“寄给”后端API -->
-    <script>
-        document.getElementById('feedbackForm').addEventListener('submit', function(e) {
-            e.preventDefault(); // 阻止网页刷新
+        <form id="feedbackForm" class="p-6 space-y-6">
+            <div class="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <h3 class="font-bold text-gray-800 border-b pb-2">1. 锁定您的门店</h3>
+                <div>
+                    <label class="block text-gray-600 text-sm font-medium mb-1">所属渠道</label>
+                    <select id="channelSelect" class="w-full border-gray-300 rounded-md p-2 border focus:ring-blue-500">
+                        <option value="">-- 请选择渠道 --</option>
+                        <option value="Mass Merchant">Mass Merchant (MM)</option>
+                        <option value="OTC">OTC</option>
+                        <option value="Township">Township</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-600 text-sm font-medium mb-1">门店名称 (支持拼音/汉字模糊搜索)</label>
+                    <select id="storeSelect" class="w-full select2" disabled>
+                        <option value="">-- 请先选择渠道 --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="space-y-4">
+                <h3 class="font-bold text-gray-800 border-b pb-2">2. 当周核心异动</h3>
+                <div>
+                    <label class="block text-gray-600 text-sm font-medium mb-2">客流/销量整体趋势</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="relative">
+                            <input class="hidden radio-btn" type="radio" name="trend" id="trendUp" value="Up">
+                            <label for="trendUp" class="flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-all hover:bg-gray-50 text-gray-600">
+                                <span class="text-green-500 mr-2">📈</span> 增长 / 上升
+                            </label>
+                        </div>
+                        <div class="relative">
+                            <input class="hidden radio-btn" type="radio" name="trend" id="trendDown" value="Down">
+                            <label for="trendDown" class="flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-all hover:bg-gray-50 text-gray-600">
+                                <span class="text-red-500 mr-2">📉</span> 下降 / 减少
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-600 text-sm font-medium mb-1">最核心的驱动/拉阻因素</label>
+                    <select id="reasonSelect" class="w-full border-gray-300 rounded-md p-2 border focus:ring-blue-500 bg-gray-100" disabled>
+                        <option value="">-- 请先选择趋势 --</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-600 text-sm font-medium mb-1">具体情况补充说明</label>
+                    <textarea id="detailInput" rows="3" class="w-full border-gray-300 rounded-md p-3 border focus:ring-2 focus:ring-blue-500" placeholder="例如：五一前的促销宣传，大部分在5.1转化，因此后续SO下滑..."></textarea>
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition duration-200 mt-4">
+                提交分析报告
+            </button>
+            <div id="message" class="text-center hidden font-bold mt-2"></div>
+        </form>
+    </div>
+     <script>
+        // --- 日期自动计算逻辑 ---
+        function calculateFiscalWeek() {
+            // 设定基准点：2026年5月10日 (周日) 为 Q3 W7 的第一天
+            const anchorDate = new Date('2026-05-10T00:00:00');
+            const anchorQ = 3;
+            const anchorW = 7;
             
-            const storeName = document.getElementById('storeName').value;
-            const content = document.getElementById('content').value;
-            const btn = this.querySelector('button');
-            btn.innerText = '提交中...';
+            const today = new Date();
+            // 计算相差的天数
+            const diffTime = today - anchorDate;
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
             
-            // fetch 就是用来发包裹的快递员
-            fetch('/api/feedback', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ store_name: storeName, content: content })
-            })
-            .then(response => response.json())
-            .then(data => {
-                const msgDiv = document.getElementById('message');
-                msgDiv.classList.remove('hidden');
-                btn.innerText = '提交报告';
-                
-                if(data.status === 'success') {
-                    msgDiv.innerHTML = '<span class="text-green-600">提交成功！辛苦了。</span>';
-                    document.getElementById('content').value = ''; // 清空输入框
-                } else {
-                    msgDiv.innerHTML = '<span class="text-red-600">提交失败，请重试。</span>';
+            // 计算相差的周数
+            const diffWeeks = Math.floor(diffDays / 7);
+            
+            let currentW = anchorW + diffWeeks;
+            let currentQ = anchorQ;
+            let currentFY = 26;
+            
+            // 简单处理跨季度逻辑 (假设每个季度13周)
+            while(currentW > 13) {
+                currentW -= 13;
+                currentQ += 1;
+                if(currentQ > 4) {
+                    currentQ = 1;
+                    currentFY += 1;
                 }
-                
-                // 3秒后隐藏提示
-                setTimeout(() => { msgDiv.classList.add('hidden'); }, 3000);
+            }
+            // 如果计算出是负数（测试用），就不做处理，直接使用锚点
+            if (diffDays < 0) { currentW = 6; } // 比如 5月9日
+            
+            return `FY${currentFY}Q${currentQ} - W${currentW}`;
+        }
+        
+        document.getElementById('currentPeriod').innerText = calculateFiscalWeek();
+
+        // --- 提交表单逻辑 ---
+        const reasonsUp = [
+            "履约能力提升，断货缓解等", "捆绑销售（Bundle）", "以旧换新，分期付款等增值服务", "店内互动坊",
+            "大客户团购，企业购机", "门店新增买赠促销活动", "专区位置优势", "生命周期营销", "会员等级权益",
+            "即时零售引流", "节假日人流上升", "会员等便捷服务", "私域与社交渠道，新媒体（朋友圈、社群）互动",
+            "直播带货与本地生活", "政策与区域补贴驱动", "运营商活动", "金融机构促销活动", "商场卡券刺激",
+            "节假日送礼需求上升", "线上下单，门店提货", "平台大促与提前锁定", "其它原因"
+        ];
+        const reasonsDown = [
+            "专区位置原因", "大使或店员个人原因", "政策观望心理", "库存结构断层", "活动空档期落差",
+            "利润与政策冲突", "门店停电，装修，暂停营业，运营异常", "消费者换机周期延长", "消费降级",
+            "创新缺乏", "负面舆情或质量风波", "竞品旗舰突围", "竞品冲击与客流被抢", "渠道价格倒挂",
+            "无法参加运营商或商场促销活动", "当地经济衰退原因，购买力下降", "国补政策缺失，顾客观望", "其它原因"
+        ];
+        const mockStores = {
+            "Mass Merchant": ["宿迁京东重庆京东 Mall 杨家坪店", "宿迁京东长沙京东 MALL", "宿迁京东西安京东 MALL", "宿迁京东西安电视塔城市旗舰店"],
+            "OTC": ["上海移动南京东路厅", "广州电信天河城店", "北京联通三里屯店"],
+            "Township": ["苏宁易购乡镇授权店A", "五星电器乡镇店B"]
+        };
+        $(document).ready(function() {
+            $('.select2').select2({ placeholder: "输入名字或拼音查找" });
+            $('#channelSelect').change(function() {
+                const ch = $(this).val();
+                const $store = $('#storeSelect');
+                $store.empty().append('<option value="">-- 请选择门店 --</option>');
+
+                if (ch && mockStores[ch]) {
+                    mockStores[ch].forEach(store => $store.append(new Option(store, store)));
+                    $store.prop('disabled', false);
+                } else {
+                    $store.prop('disabled', true);
+                }
+                $store.trigger('change');
+            });
+            $('input[name="trend"]').change(function() {
+                const trend = $(this).val();
+                const $reason = $('#reasonSelect');
+                $reason.empty().append('<option value="">-- 请选择核心归因 --</option>');
+
+                const list = trend === 'Up' ? reasonsUp : reasonsDown;
+                list.forEach(r => $reason.append(new Option(r, r)));
+
+                $reason.prop('disabled', false).removeClass('bg-gray-100');
+            });
+            $('#feedbackForm').submit(function(e) {
+                e.preventDefault();
+                const data = {
+                    period: $('#currentPeriod').text(),
+                    channel: $('#channelSelect').val(),
+                    region: 'Auto-mapped',
+                    store_name: $('#storeSelect').val(),
+                    trend: $('input[name="trend"]:checked').val(),
+                    reason: $('#reasonSelect').val(),
+                    detail: $('#detailInput').val()
+                };
+                if (!data.store_name || !data.trend || !data.reason) {
+                    alert("请填写完整：门店、趋势、和核心归因！");
+                    return;
+                }
+                $('#submitBtn').text('提交中...').prop('disabled', true);
+                fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                .then(res => res.json())
+                .then(res => {
+                    const msgDiv = $('#message');
+                    msgDiv.removeClass('hidden');
+                    $('#submitBtn').text('提交分析报告').prop('disabled', false);
+                    if(res.status === 'success') {
+                        msgDiv.html('<span class="text-green-600">✅ 提报成功！已自动汇入大盘。</span>');
+                        $('#detailInput').val('');
+                    } else {
+                        msgDiv.html('<span class="text-red-600">❌ 提报失败，请重试。</span>');
+                    }
+                    setTimeout(() => { msgDiv.addClass('hidden'); }, 3000);
+                });
             });
         });
     </script>
