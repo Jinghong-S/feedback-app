@@ -2,92 +2,88 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>总部数据看板</title>
+    <title>总部管理看板</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 </head>
-<body class="bg-gray-100 p-4">
-    <div class="max-w-6xl mx-auto mt-6">
-        <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow">
-            <h2 class="text-2xl font-bold text-gray-800">门店运营数据分析中枢</h2>
-            <a href="/" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition" target="_blank">&larr; 返回前台模拟提交</a>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-6xl mx-auto">
+        <!-- 顶部操作栏 -->
+        <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-xl shadow-sm mb-6">
+            <div class="mb-4 md:mb-0">
+                <h1 class="text-2xl font-bold text-gray-800">总部反馈数据控制台</h1>
+                <p class="text-gray-500 text-sm mt-1">这里汇集了全国门店提交的标准化反馈，支持一键导出以用于生成周报。</p>
+            </div>
+            <div class="flex gap-4">
+                <a href="/api/export" target="_blank" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    一键导出数据 (CSV/Excel)
+                </a>
+            </div>
         </div>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white rounded-xl shadow-md p-6">
-                <h3 class="text-lg font-bold mb-4 text-gray-700 border-b pb-2">各门店反馈活跃度</h3>
-                <div id="chart" style="width: 100%; height: 350px;"></div>
+
+        <!-- 实时数据流列表 -->
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-800">实时收集流水 (最新50条)</h3>
+                <span class="text-xs text-green-500 flex items-center">
+                    <span class="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></span>
+                    实时连接中
+                </span>
             </div>
             
-            <div class="bg-white rounded-xl shadow-md p-6">
-                <div class="flex justify-between items-center border-b pb-2 mb-4">
-                    <h3 class="text-lg font-bold text-gray-700">实时滚动反馈库 (最新10条)</h3>
-                    <span class="text-xs text-green-500 flex items-center">
-                        <span class="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></span>
-                        实时连接中
-                    </span>
-                </div>
-                <div class="overflow-y-auto h-[350px] pr-2">
-                    <ul id="recentList" class="space-y-4">
-                        <li class="text-gray-400 text-center py-10">加载数据中...</li>
-                    </ul>
-                </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-600 text-sm border-b">
+                            <th class="p-3 rounded-tl-lg">提报时间</th>
+                            <th class="p-3">周期</th>
+                            <th class="p-3">渠道</th>
+                            <th class="p-3">门店</th>
+                            <th class="p-3">趋势</th>
+                            <th class="p-3">核心归因 (标准)</th>
+                            <th class="p-3 rounded-tr-lg">详情说明</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentList" class="text-sm">
+                        <tr><td colspan="7" class="text-center p-10 text-gray-400">加载数据中...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-
+    
     <script>
-        let myChart = null;
-
         function loadData() {
             fetch('/api/report')
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
-                if (!myChart) {
-                    myChart = echarts.init(document.getElementById('chart'));
+                const tbody = document.getElementById('recentList');
+                if(!data.recent || data.recent.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center p-10 text-gray-400">暂无门店提交数据</td></tr>';
+                    return;
                 }
-                const option = {
-                    tooltip: { trigger: 'axis' },
-                    xAxis: {
-                        type: 'category',
-                        data: data.counts.map(item => item.store_name),
-                        axisLabel: { interval: 0, rotate: 15 }
-                    },
-                    yAxis: { type: 'value', name: '提交条数', minInterval: 1 },
-                    series: [{
-                        name: '反馈数量',
-                        type: 'bar',
-                        data: data.counts.map(item => item.count),
-                        itemStyle: { color: '#3B82F6', borderRadius: [4, 4, 0, 0] },
-                        barWidth: '40%'
-                    }]
-                };
-                myChart.setOption(option);
-
-                const listUl = document.getElementById('recentList');
-                if(data.recent.length === 0) {
-                    listUl.innerHTML = '<li class="text-gray-400 text-center py-10">目前还没有任何门店提交反馈</li>';
-                } else {
-                    listUl.innerHTML = '';
-                    data.recent.forEach(item => {
-                        listUl.innerHTML += `
-                            <li class="bg-blue-50 rounded-lg p-3 border-l-4 border-blue-500">
-                                <div class="flex justify-between items-start mb-1">
-                                    <span class="font-bold text-sm text-gray-800">${item.store_name}</span>
-                                    <span class="text-xs text-gray-500">${item.time}</span>
-                                </div>
-                                <p class="text-sm text-gray-700">${item.content}</p>
-                            </li>
-                        `;
-                    });
-                }
+                tbody.innerHTML = '';
+                data.recent.forEach(item => {
+                    const trendIcon = item.trend === 'Up' 
+                        ? '<span class="text-green-600 font-bold bg-green-50 px-2 py-1 rounded">📈 增长</span>' 
+                        : '<span class="text-red-600 font-bold bg-red-50 px-2 py-1 rounded">📉 下降</span>';
+                    tbody.innerHTML += `
+                        <tr class="border-b hover:bg-blue-50 transition">
+                            <td class="p-3 text-gray-500 whitespace-nowrap">${item.time}</td>
+                            <td class="p-3 font-mono text-xs text-gray-600">${item.period}</td>
+                            <td class="p-3 text-gray-700">${item.channel}</td>
+                            <td class="p-3 font-bold text-gray-800">${item.store_name}</td>
+                            <td class="p-3">${trendIcon}</td>
+                            <td class="p-3 text-blue-600 font-medium">${item.reason}</td>
+                            <td class="p-3 text-gray-500 max-w-xs truncate" title="${item.detail}">${item.detail}</td>
+                        </tr>
+                    `;
+                });
             });
         }
-
+        
         loadData();
-        setInterval(loadData, 3000); // 3秒刷新一次
-        window.addEventListener('resize', () => { if(myChart) myChart.resize(); });
+        setInterval(loadData, 3000); // 3秒自动刷新一次
     </script>
 </body>
 </html>
